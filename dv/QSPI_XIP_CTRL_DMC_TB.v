@@ -1,5 +1,8 @@
+/*
+    Mohamed Shalan (mshalan@aucegypt.edu)
+*/
 
-module DMC_CTRL_TB;
+module QSPI_XIP_CTRL_DMC_TB;
 
     wire         sck;
     wire         ce_n;
@@ -19,7 +22,7 @@ module DMC_CTRL_TB;
     wire [31:0] HRDATA;
 
 
-    DMC_CTRL DUV (
+    QSPI_XIP_CTRL_DMC DUV (
         // AHB-Lite Slave Interface
         .HSEL(HSEL),
         .HCLK(HCLK),
@@ -29,6 +32,7 @@ module DMC_CTRL_TB;
         .HWDATA(HWDATA),
         .HWRITE(HWRITE),
         .HREADY(HREADY),
+        
         //Output
         .HREADYOUT(HREADYOUT),
         .HRDATA(HRDATA),

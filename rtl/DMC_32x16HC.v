@@ -4,12 +4,78 @@
 //`define VERIFY
 
 /*
-    Hand-crafted 32 lines x 16 bytes Direct Mapped Cache
+    Hand-crafted 32 lines x 16 bytes Direct Mapped Cache for sky130A
     It can operate @ 200MHz clock!
     Number of instances: 10654
     ICG cells are used to reduce dynamic power consumption
     A custom clock tree is embedded
 */
+/*
+    Mohamed Shalan (mshalan@aucegypt.edu)
+*/
+
+module DMC_32x16HC (
+    input wire          clk,
+    input wire          rst_n,
+    // 
+    input wire  [23:0]  A,
+    input wire  [23:0]  A_h,
+    output wire [31:0]  Do,
+    output wire         hit,
+    //
+    input wire [127:0]  line,
+    input wire          wr
+);
+
+    wire [127:0] data;
+    wire [3:0]  offset  = A[3:0];
+    wire [4:0]  index   = A[8:4];
+    wire [14:0] tag     = A[23:9];
+
+    wire [4:0]  index_h   = A_h[8:4];
+    wire [14:0] tag_h     = A_h[23:9];
+
+    wire c_valid;
+    wire[14:0] c_tag;
+
+    wire [31:0] SELH, SEL;
+
+    wire CLK_buf;
+
+    wire hi;
+
+    DEC5x32 DECH ( .A(index_h), .SEL(SELH) );
+    DEC5x32 DEC ( .A(index), .SEL(SEL) );
+
+    sky130_fd_sc_hd__conb_1 TIE (.LO(), .HI(hi));
+    sky130_fd_sc_hd__clkbuf_16 CLKBUF (.X(CLK_buf), .A(clk));
+
+    OVERHEAD OVHB [31:0] (
+        .CLK(clk),
+        .RSTn(rst_n),
+        .SELR(SELH), 
+        .SELW(SEL),
+        .VDi(hi),
+        .VDo(c_valid),
+        .TDi(tag),
+        .TDo(c_tag),
+        .WE(wr)
+    );
+
+    LINE16 DATA [31:0] (
+        .CLK(clk),
+        .WE(wr),
+        .SELR(SEL), 
+        .SELW(SEL),
+        .Di(line),
+        .Do(data)
+    );
+
+    assign  hit =   c_valid & (c_tag == tag_h);
+
+    MUX4x1_32 MUX ( .A0(data[31:0]), .A1(data[63:32]), .A2(data[95:64] ), .A3(data[127:96]), .S(offset[3:2]), .X(Do) );
+
+endmodule
 
 module HWORD (
     input CLK,
@@ -151,73 +217,7 @@ module OVERHEAD(
 
 endmodule
 
-module DMC_32x16HC (
-    input wire          clk,
-    input wire          rst_n,
-    // 
-    input wire  [23:0]  A,
-    input wire  [23:0]  A_h,
-    output wire [31:0]  Do,
-    output wire         hit,
-    //
-    input wire [127:0]  line,
-    input wire          wr
-);
 
-    wire [127:0] data;
-    wire [3:0]  offset  = A[3:0];
-    wire [4:0]  index   = A[8:4];
-    wire [14:0] tag     = A[23:9];
-
-    wire [4:0]  index_h   = A_h[8:4];
-    wire [14:0] tag_h     = A_h[23:9];
-
-    wire c_valid;
-    wire[14:0] c_tag;
-
-    wire [31:0] SELH, SEL;
-
-    wire CLK_buf;
-
-    wire hi;
-
-    DEC5x32 DECH ( .A(index_h), .SEL(SELH) );
-    DEC5x32 DEC ( .A(index), .SEL(SEL) );
-
-    sky130_fd_sc_hd__conb_1 TIE (.LO(), .HI(hi));
-    sky130_fd_sc_hd__clkbuf_16 CLKBUF (.X(CLK_buf), .A(clk));
-
-    OVERHEAD OVHB [31:0] (
-        .CLK(clk),
-        .RSTn(rst_n),
-        .SELR(SELH), 
-        .SELW(SEL),
-        .VDi(hi),
-        .VDo(c_valid),
-        .TDi(tag),
-        .TDo(c_tag),
-        .WE(wr)
-    );
-
-    LINE16 DATA [31:0] (
-        .CLK(clk),
-        .WE(wr),
-        .SELR(SEL), 
-        .SELW(SEL),
-        .Di(line),
-        .Do(data)
-    );
-
-    assign  hit =   c_valid & (c_tag == tag_h);
-
-    MUX4x1_32 MUX ( .A0(data[31:0]), .A1(data[63:32]), .A2(data[95:64] ), .A3(data[127:96]), .S(offset[3:2]), .X(Do) );
-/*
-    assign  Do  =   (offset[3:2] == 2'd0) ?  data[31:0] :
-                    (offset[3:2] == 2'd1) ?  data[63:32] :
-                    (offset[3:2] == 2'd2) ?  data[95:64] :
-                    data[127:96];
-*/
-endmodule
 
 
 `ifdef VERIFY
